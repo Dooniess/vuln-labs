@@ -1,0 +1,63 @@
+# Lab WordPress jetable pour tester des PoC de vulnérabilités (plugins)
+# Usage : voir le Makefile et le README.md
+
+services:
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${DB_NAME:-wordpress}
+      MARIADB_USER: ${DB_USER:-wp}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-wp}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  wordpress:
+    image: wordpress:${WP_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_NAME: ${DB_NAME:-wordpress}
+      WORDPRESS_DB_USER: ${DB_USER:-wp}
+      WORDPRESS_DB_PASSWORD: ${DB_PASSWORD:-wp}
+      WORDPRESS_DEBUG: ${WP_DEBUG:-1}
+      # Astuce : forcer l'URL évite les soucis de redirection quand on change de port
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_HOME', 'http://localhost:${HTTP_PORT:-8080}');
+        define('WP_SITEURL', 'http://localhost:${HTTP_PORT:-8080}');
+    volumes:
+      - wp_data:/var/www/html
+      - ./plugins:/opt/local-plugins:ro
+
+  # Conteneur WP-CLI : lancé à la demande (docker compose run), pas au "up"
+  wpcli:
+    image: wordpress:cli
+    profiles: ["cli"]
+    user: "33:33"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      HOME: /tmp           
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_NAME: ${DB_NAME:-wordpress}
+      WORDPRESS_DB_USER: ${DB_USER:-wp}
+      WORDPRESS_DB_PASSWORD: ${DB_PASSWORD:-wp}
+    volumes:
+      - wp_data:/var/www/html
+      - ./plugins:/opt/local-plugins:ro
+
+volumes:
+  db_data:
+  wp_data:

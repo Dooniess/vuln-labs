@@ -1,0 +1,44 @@
+# Lab Joomla "toutes versions" - image construite depuis l'archive officielle.
+# Principalement concu pour Joomla 4.x.
+# Pour 5.x et 6.x, utilisez le lab image officielle.
+
+services:
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${JOOMLA_DB_NAME:-joomla}
+      MARIADB_USER: ${JOOMLA_DB_USER:-joomla}
+      MARIADB_PASSWORD: ${JOOMLA_DB_PASSWORD:-joomla}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  joomla:
+    build:
+      context: .
+      args:
+        JOOMLA_VERSION: ${JOOMLA_VERSION:?Definis JOOMLA_VERSION dans le .env}
+        PHP_VERSION: ${PHP_VERSION:-8.1}
+    image: joomla-lab:${JOOMLA_VERSION}-php${PHP_VERSION:-8.1}
+    restart: unless-stopped
+    # Apple Silicon : decommenter si erreur "no matching manifest for linux/arm64/v8"
+    # platform: linux/amd64
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+    volumes:
+      # Pas de volume sur /var/www/html : les fichiers Joomla viennent directement
+      # de l'image. Cela garantit que la version demandee est toujours celle qui tourne,
+      # sans risque de superposition par un ancien volume.
+      - ./extensions:/opt/local-extensions:ro
+
+volumes:
+  db_data:

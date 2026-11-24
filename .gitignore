@@ -1,0 +1,22 @@
+# Données sensibles
+.env
+*.env
+
+# Docker volumes locaux
+**/data/
+**/mysql/
+**/postgres/
+
+# Plugins téléchargés (trop lourds, reconstruits via make)
+**/plugins/*.zip
+wordpress/plugins/the-events-calendar/
+
+# Fichiers système
+.DS_Store
+*.log
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/

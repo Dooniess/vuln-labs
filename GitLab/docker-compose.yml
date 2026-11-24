@@ -1,0 +1,56 @@
+# Lab GitLab CE jetable pour tester des PoC de vulnérabilités.
+#
+# Architecture ALL-IN-ONE : PostgreSQL, Redis, Nginx, Puma, Sidekiq
+# et Gitaly tournent tous dans le même conteneur GitLab Omnibus.
+#
+# Prérequis Docker Desktop : allouer au moins 6 GB de RAM.
+# (Settings → Resources → Memory)
+
+services:
+  gitlab:
+    image: gitlab/gitlab-ce:${GITLAB_TAG:-latest}
+    # Apple Silicon : les tags récents (14.x+) ont un variant arm64 natif.
+    # Pour les versions très anciennes (11.x-13.x), décommenter si erreur
+    # "no matching manifest for linux/arm64/v8" :
+    # platform: linux/amd64
+    restart: unless-stopped
+    hostname: localhost
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+      - "${SSH_PORT:-2222}:22"
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        # URL visible depuis le navigateur (utilisée pour générer les liens)
+        external_url 'http://localhost:${HTTP_PORT:-8080}'
+
+        # Forcer nginx à écouter sur le port 80 dans le conteneur.
+        # Nécessaire car on mappe host:${HTTP_PORT} → container:80.
+        # Sans ça, GitLab tenterait d'écouter sur ${HTTP_PORT} à l'intérieur,
+        # ce qui ne correspond pas au mapping Docker.
+        nginx['listen_port'] = 80
+        nginx['listen_https'] = false
+        nginx['redirect_http_to_https'] = false
+
+        # Optimisations mémoire pour un usage lab local (~1-1.5 GB économisés)
+        puma['worker_processes'] = 0
+        sidekiq['concurrency'] = 5
+
+        # Désactiver le stack de monitoring complet
+        # Note : grafana['enable'] a été supprimé à partir de GitLab 16.x
+        prometheus_monitoring['enable'] = false
+    volumes:
+      - gitlab_config:/etc/gitlab
+      - gitlab_logs:/var/log/gitlab
+      - gitlab_data:/var/opt/gitlab
+    shm_size: "256m"
+    healthcheck:
+      test: ["CMD", "/opt/gitlab/bin/gitlab-healthcheck", "--fail", "--max-time", "10"]
+      interval: 60s
+      timeout: 15s
+      retries: 10
+      start_period: 300s
+
+volumes:
+  gitlab_config:
+  gitlab_logs:
+  gitlab_data:

@@ -1,0 +1,47 @@
+# Lab GLPI jetable pour tester des PoC de vulnérabilités.
+# La version de GLPI se choisit via GLPI_TAG dans le .env (tag de l'image officielle).
+
+services:
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${GLPI_DB_NAME:-glpi}
+      MARIADB_USER: ${GLPI_DB_USER:-glpi}
+      MARIADB_PASSWORD: ${GLPI_DB_PASSWORD:-glpi}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  glpi:
+    image: glpi/glpi:${GLPI_TAG:-latest}
+    restart: unless-stopped
+    # Sur Apple Silicon : si le tag choisi n'a pas de variante arm64, décommente
+    # la ligne suivante pour forcer l'émulation amd64 (fonctionne, un peu plus lent).
+    # platform: linux/amd64
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+    environment:
+      # Ces 5 variables déclenchent l'auto-installation de GLPI au 1er démarrage.
+      GLPI_DB_HOST: db
+      GLPI_DB_PORT: 3306
+      GLPI_DB_NAME: ${GLPI_DB_NAME:-glpi}
+      GLPI_DB_USER: ${GLPI_DB_USER:-glpi}
+      GLPI_DB_PASSWORD: ${GLPI_DB_PASSWORD:-glpi}
+      GLPI_SKIP_AUTOINSTALL: ${GLPI_SKIP_AUTOINSTALL:-false}
+    volumes:
+      - glpi_data:/var/glpi
+      # Dépose ici les plugins à tester (un dossier par plugin).
+      - ./plugins:/var/www/glpi/plugins:rw
+
+volumes:
+  db_data:
+  glpi_data:

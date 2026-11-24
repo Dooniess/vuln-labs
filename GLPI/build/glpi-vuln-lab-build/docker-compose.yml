@@ -1,0 +1,48 @@
+# Lab GLPI "toutes versions" : l'image est construite depuis l'archive officielle.
+# La version se choisit via GLPI_VERSION (et PHP_VERSION) dans le .env.
+
+services:
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${GLPI_DB_NAME:-glpi}
+      MARIADB_USER: ${GLPI_DB_USER:-glpi}
+      MARIADB_PASSWORD: ${GLPI_DB_PASSWORD:-glpi}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  glpi:
+    build:
+      context: .
+      args:
+        GLPI_VERSION: ${GLPI_VERSION:?Définis GLPI_VERSION dans le .env (ex. 9.5.11)}
+        PHP_VERSION: ${PHP_VERSION:-7.4}
+    image: glpi-lab:${GLPI_VERSION}-php${PHP_VERSION:-7.4}
+    restart: unless-stopped
+    # Sur Apple Silicon, les vieilles versions de PHP n'ont pas toujours d'image
+    # arm64 : décommente pour forcer l'émulation amd64 (fonctionne, plus lent).
+    # platform: linux/amd64
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+    volumes:
+      # On persiste config + files pour survivre à un simple down/up.
+      # 'make reset' efface ces volumes pour repartir propre.
+      - glpi_config:/var/www/html/config
+      - glpi_files:/var/www/html/files
+      # Dépose ici les plugins à tester (un sous-dossier par plugin).
+      - ./plugins:/var/www/html/plugins:rw
+
+volumes:
+  db_data:
+  glpi_config:
+  glpi_files:

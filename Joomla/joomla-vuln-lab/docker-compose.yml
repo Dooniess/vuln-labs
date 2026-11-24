@@ -1,0 +1,55 @@
+# Lab Joomla jetable — image officielle (5.x / 6.x)
+# La version et la variante PHP se choisissent via JOOMLA_TAG dans le .env.
+
+services:
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${JOOMLA_DB_NAME:-joomla}
+      MARIADB_USER: ${JOOMLA_DB_USER:-joomla}
+      MARIADB_PASSWORD: ${JOOMLA_DB_PASSWORD:-joomla}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  joomla:
+    image: joomla:${JOOMLA_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+    environment:
+      # Connexion BDD
+      JOOMLA_DB_HOST: db
+      JOOMLA_DB_NAME: ${JOOMLA_DB_NAME:-joomla}
+      JOOMLA_DB_USER: ${JOOMLA_DB_USER:-joomla}
+      JOOMLA_DB_PASSWORD: ${JOOMLA_DB_PASSWORD:-joomla}
+      # Ces 5 variables déclenchent l'auto-installation (skip du wizard navigateur).
+      # Toutes doivent être non-vides pour que l'entrypoint les prenne en compte.
+      JOOMLA_SITE_NAME: ${JOOMLA_SITE_NAME:-Vuln Lab}
+      JOOMLA_ADMIN_USER: ${JOOMLA_ADMIN_USER:-Admin}
+      JOOMLA_ADMIN_USERNAME: ${JOOMLA_ADMIN_USERNAME:-admin}
+      # Joomla 6.x : mot de passe admin obligatoirement > 12 caractères.
+      JOOMLA_ADMIN_PASSWORD: ${JOOMLA_ADMIN_PASSWORD:-Admin@VulnLab1}
+      JOOMLA_ADMIN_EMAIL: ${JOOMLA_ADMIN_EMAIL:-admin@example.test}
+      # Extensions installées automatiquement au démarrage (optionnel).
+      # Chemins locaux séparés par ; (fichiers dans ./extensions/) :
+      JOOMLA_EXTENSIONS_PATHS: ${JOOMLA_EXTENSIONS_PATHS:-}
+      # URLs distantes séparées par ; :
+      JOOMLA_EXTENSIONS_URLS: ${JOOMLA_EXTENSIONS_URLS:-}
+    volumes:
+      - joomla_data:/var/www/html
+      # Extensions locales à tester (zip déposés dans ./extensions/)
+      - ./extensions:/opt/local-extensions:ro
+
+volumes:
+  db_data:
+  joomla_data:
