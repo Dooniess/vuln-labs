@@ -117,7 +117,7 @@ make up
 
 > Apple Silicon: versions < 10.x require `platform: linux/amd64` — already configured, Rosetta must be enabled in Docker Desktop.
 
-📄 [Full documentation](./glpi/README.md)
+📄 [Full documentation](./GLPI/README.md)
 
 ---
 
@@ -148,7 +148,7 @@ make up
 > **Joomla 6.x**: admin password must be longer than 12 characters. The default (`Admin@VulnLab1`) meets this requirement.  
 > **Versions 3.x / 4.0–4.2**: no CLI installer available, browser wizard required (DB host = `db`).
 
-📄 [Full documentation](./joomla/README.md)
+📄 [Full documentation](./Joomla/README.md)
 
 ---
 
@@ -171,7 +171,7 @@ First startup: 5 to 10 minutes (Omnibus initialization).
 > **Old tags (11.x–13.x)**: amd64-only images, Rosetta required.  
 > **Do not add** `grafana['enable'] = false` to the Omnibus config — option removed since GitLab 16.x.
 
-📄 [Full documentation](./gitlab/README.md)
+📄 [Full documentation](./GitLab/README.md)
 
 ---
 
