@@ -175,52 +175,6 @@ First startup: 5 to 10 minutes (Omnibus initialization).
 
 ---
 
-## CVEs
-
-### CVE-2026-78006 — The Events Calendar ≤ 6.12.0
-
-**Type:** Unauthenticated Remote Code Execution (two chains)  
-**CVSS:** Critical  
-**Path:** `cves/CVE-2026-78006/`
-
-```bash
-cd cves/CVE-2026-78006/
-source .venv/bin/activate
-
-python3 exploit-cve-2026-78006.py \
-  --url http://localhost:8080 \
-  --event "http://localhost:8080/?tribe_events=<slug>" \
-  --chain 2
-```
-
-**Result:** admin password reset → full `wp-admin` access.
-
-> **Note:** The Wordfence advisory lists versions ≤ 6.17.4 as affected. Our source code analysis shows that Chain 2 was silently patched since **6.12.2.1**, and that one exploitation condition is not documented in the official disclosure.
-
-📄 [Full analysis + exploitation conditions](./cves/CVE-2026-78006/README.md)
-
----
-
-### CVE-2026-85706 — GitLab Path Traversal
-
-**Type:** Unauthenticated Path Traversal — arbitrary file read  
-**CVSS:** 10.0  
-**Vulnerable versions:** < 19.1.8 / < 19.2.6 / < 19.3.2  
-**Tested on:** `19.3.1-ce.0`  
-**Path:** `cves/CVE-2026-85706/`
-
-```bash
-# With GitLab lab running on 19.3.1
-python3 exploit.py --url http://localhost:8080 --project-id <id>
-```
-
-**Result:** `gitlab.yml` and internal config files read via HTTP 400.  
-**Patch verified:** `19.3.2-ce.0` → HTTP 401 before file is read.
-
-📄 [Documentation + patch analysis](./gitlab/README.md#cve-2026-85706)
-
----
-
 ## Common Troubleshooting
 
 | Issue | Solution |
